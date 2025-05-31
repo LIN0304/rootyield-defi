@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RootYield - Native Bitcoin Yield Farming</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .bg-animation span {
+            position: absolute;
+            display: block;
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 166, 0, 0.1);
+            animation: move 25s linear infinite;
+            bottom: -150px;
+        }
+
+        @keyframes move {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+                border-radius: 0;
+            }
+            100% {
+                transform: translateY(-1000px) rotate(720deg);
+                opacity: 0;
+                border-radius: 50%;
+            }
+        }
+
+        /* Header */
+        .header {
+            padding: 2rem;
+            background: rgba(26, 26, 46, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 166, 0, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ffa600, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .connect-btn {
+            background: linear-gradient(45deg, #ffa600, #ff6b6b);
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 166, 0, 0.3);
+        }
+
+        .connect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 166, 0, 0.4);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Stats Section */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 166, 0, 0.2);
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 166, 0, 0.1) 0%, transparent 70%);
+            transform: rotate(45deg);
+            transition: all 0.5s ease;
+            opacity: 0;
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 166, 0, 0.5);
+            box-shadow: 0 10px 30px rgba(255, 166, 0, 0.2);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ffa600, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 1rem 0;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Action Cards */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .action-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 166, 0, 0.2);
+            border-radius: 20px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .action-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 15px 40px rgba(255, 166, 0, 0.2);
+        }
+
+        .action-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .action-icon {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(45deg, #ffa600, #ff6b6b);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .input-group {
+            margin: 1.5rem 0;
+        }
+
+        .input-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .token-input {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 166, 0, 0.3);
+            border-radius: 10px;
+            color: white;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .token-input:focus {
+            outline: none;
+            border-color: #ffa600;
+            box-shadow: 0 0 15px rgba(255, 166, 0, 0.3);
+        }
+
+        .input-suffix {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #ffa600;
+            font-weight: bold;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(45deg, #ffa600, #ff6b6b);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .action-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 166, 0, 0.4);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .info-text {
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #ffa600;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toasts */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .toast {
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 166, 0, 0.3);
+            border-radius: 10px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.success {
+            border-color: #4caf50;
+        }
+
+        .toast.error {
+            border-color: #f44336;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stat-value {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <span style="left: 10%; width: 80px; height: 80px; animation-delay: 0s;"></span>
+        <span style="left: 20%; width: 20px; height: 20px; animation-delay: 2s;"></span>
+        <span style="left: 35%; width: 50px; height: 50px; animation-delay: 4s;"></span>
+        <span style="left: 50%; width: 30px; height: 30px; animation-delay: 0s;"></span>
+        <span style="left: 65%; width: 60px; height: 60px; animation-delay: 2s;"></span>
+        <span style="left: 80%; width: 40px; height: 40px; animation-delay: 4s;"></span>
+        <span style="left: 90%; width: 25px; height: 25px; animation-delay: 1s;"></span>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav">
+            <div class="logo">🚀 RootYield</div>
+            <button class="connect-btn" id="connectBtn" onclick="connectWallet()">Connect Wallet</button>
+        </nav>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Stats Section -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Value Locked</div>
+                <div class="stat-value" id="tvl">$0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Current APY</div>
+                <div class="stat-value" id="apy">0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Your Staked RBTC</div>
+                <div class="stat-value" id="userStaked">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Your Rewards</div>
+                <div class="stat-value" id="userRewards">0</div>
+            </div>
+        </div>
+
+        <!-- Action Cards -->
+        <div class="action-grid">
+            <!-- Stake Card -->
+            <div class="action-card">
+                <h3 class="action-title">
+                    <span class="action-icon">💰</span>
+                    Stake RBTC
+                </h3>
+                <div class="input-group">
+                    <label class="input-label">Amount to stake</label>
+                    <div class="input-wrapper">
+                        <input type="number" class="token-input" id="stakeAmount" placeholder="0.0" step="0.001">
+                        <span class="input-suffix">RBTC</span>
+                    </div>
+                </div>
+                <button class="action-btn" onclick="stake()">Stake RBTC</button>
+                <p class="info-text">Earn RYLD rewards by staking your RBTC</p>
+            </div>
+
+            <!-- Withdraw Card -->
+            <div class="action-card">
+                <h3 class="action-title">
+                    <span class="action-icon">📤</span>
+                    Withdraw
+                </h3>
+                <div class="input-group">
+                    <label class="input-label">Amount to withdraw</label>
+                    <div class="input-wrapper">
+                        <input type="number" class="token-input" id="withdrawAmount" placeholder="0.0" step="0.001">
+                        <span class="input-suffix">RBTC</span>
+                    </div>
+                </div>
+                <button class="action-btn" onclick="withdraw()">Withdraw RBTC</button>
+                <p class="info-text">Withdraw your staked RBTC anytime</p>
+            </div>
+
+            <!-- Claim Rewards Card -->
+            <div class="action-card">
+                <h3 class="action-title">
+                    <span class="action-icon">🎁</span>
+                    Claim Rewards
+                </h3>
+                <div class="input-group">
+                    <label class="input-label">Pending Rewards</label>
+                    <div class="input-wrapper">
+                        <input type="text" class="token-input" id="pendingRewards" placeholder="0.0" disabled>
+                        <span class="input-suffix">RYLD</span>
+                    </div>
+                </div>
+                <button class="action-btn" onclick="claimRewards()">Claim RYLD Rewards</button>
+                <p class="info-text">Claim your earned RYLD tokens</p>
+            </div>
+
+            <!-- Liquidity Pool Card -->
+            <div class="action-card">
+                <h3 class="action-title">
+                    <span class="action-icon">💧</span>
+                    Liquidity Pool
+                </h3>
+                <div class="input-group">
+                    <label class="input-label">Add Liquidity</label>
+                    <div class="input-wrapper">
+                        <input type="number" class="token-input" id="lpRbtcAmount" placeholder="0.0" step="0.001">
+                        <span class="input-suffix">RBTC</span>
+                    </div>
+                </div>
+                <button class="action-btn" onclick="addLiquidity()">Add Liquidity</button>
+                <p class="info-text">Provide liquidity and earn trading fees</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- JavaScript -->
+    <script>
+        // Contract ABIs (simplified for demo)
+        const YIELD_FARM_ABI = [
+            "function stake() payable",
+            "function withdraw(uint256 amount)",
+            "function claimRewards()",
+            "function getUserInfo(address user) view returns (uint256, uint256, uint256)",
+            "function getPendingRewards(address user) view returns (uint256)",
+            "function totalStaked() view returns (uint256)",
+            "function rewardPerBlock() view returns (uint256)"
+        ];
+
+        const RYLD_TOKEN_ABI = [
+            "function balanceOf(address account) view returns (uint256)",
+            "function approve(address spender, uint256 amount) returns (bool)"
+        ];
+
+        const LIQUIDITY_POOL_ABI = [
+            "function addLiquidity(uint256 ryldAmount) payable returns (uint256)",
+            "function getReserves() view returns (uint256, uint256)"
+        ];
+
+        // Contract addresses (replace with your deployed addresses)
+        const CONTRACTS = {
+            yieldFarm: "0x1234567890123456789012345678901234567890",
+            ryldToken: "0x0987654321098765432109876543210987654321",
+            liquidityPool: "0x1111222233334444555566667777888899990000"
+        };
+
+        let provider, signer, contracts = {};
+
+        // Initialize
+        window.addEventListener('load', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                
+                // Check if already connected
+                const accounts = await provider.listAccounts();
+                if (accounts.length > 0) {
+                    await connectWallet();
+                }
+            } else {
+                showToast('Please install MetaMask to use this dApp', 'error');
+            }
+            
+            // Update stats periodically
+            setInterval(updateStats, 5000);
+        });
+
+        // Connect wallet
+        async function connectWallet() {
+            try {
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                signer = provider.getSigner();
+                const address = await signer.getAddress();
+                
+                // Switch to Rootstock Testnet
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: '0x1f' }], // 31 in hex
+                    });
+                } catch (switchError) {
+                    if (switchError.code === 4902) {
+                        await addRootstockNetwork();
+                    }
+                }
+                
+                // Initialize contracts
+                contracts.yieldFarm = new ethers.Contract(CONTRACTS.yieldFarm, YIELD_FARM_ABI, signer);
+                contracts.ryldToken = new ethers.Contract(CONTRACTS.ryldToken, RYLD_TOKEN_ABI, signer);
+                contracts.liquidityPool = new ethers.Contract(CONTRACTS.liquidityPool, LIQUIDITY_POOL_ABI, signer);
+                
+                document.getElementById('connectBtn').textContent = address.slice(0, 6) + '...' + address.slice(-4);
+                showToast('Wallet connected successfully!', 'success');
+                
+                await updateStats();
+            } catch (error) {
+                console.error(error);
+                showToast('Failed to connect wallet', 'error');
+            }
+        }
+
+        // Add Rootstock network
+        async function addRootstockNetwork() {
+            await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                    chainId: '0x1f',
+                    chainName: 'Rootstock Testnet',
+                    nativeCurrency: {
+                        name: 'Test RBTC',
+                        symbol: 'tRBTC',
+                        decimals: 18
+                    },
+                    rpcUrls: ['https://public-node.testnet.rsk.co'],
+                    blockExplorerUrls: ['https://explorer.testnet.rootstock.io']
+                }]
+            });
+        }
+
+        // Update stats
+        async function updateStats() {
+            if (!signer) return;
+            
+            try {
+                const address = await signer.getAddress();
+                
+                // Get user info
+                const userInfo = await contracts.yieldFarm.getUserInfo(address);
+                const pendingRewards = await contracts.yieldFarm.getPendingRewards(address);
+                const totalStaked = await contracts.yieldFarm.totalStaked();
+                
+                // Update UI
+                document.getElementById('tvl').textContent = '$' + (parseFloat(ethers.utils.formatEther(totalStaked)) * 30000).toFixed(2);
+                document.getElementById('apy').textContent = calculateAPY() + '%';
+                document.getElementById('userStaked').textContent = parseFloat(ethers.utils.formatEther(userInfo[0])).toFixed(4);
+                document.getElementById('userRewards').textContent = parseFloat(ethers.utils.formatEther(pendingRewards)).toFixed(2);
+                document.getElementById('pendingRewards').value = parseFloat(ethers.utils.formatEther(pendingRewards)).toFixed(2);
+            } catch (error) {
+                console.error('Error updating stats:', error);
+            }
+        }
+
+        // Calculate APY (simplified)
+        function calculateAPY() {
+            // Simplified calculation for demo
+            return (Math.random() * 50 + 100).toFixed(2);
+        }
+
+        // Stake function
+        async function stake() {
+            if (!signer) {
+                showToast('Please connect your wallet', 'error');
+                return;
+            }
+            
+            const amount = document.getElementById('stakeAmount').value;
+            if (!amount || amount <= 0) {
+                showToast('Please enter a valid amount', 'error');
+                return;
+            }
+            
+            try {
+                const tx = await contracts.yieldFarm.stake({
+                    value: ethers.utils.parseEther(amount)
+                });
+                
+                showToast('Staking transaction submitted...', 'success');
+                await tx.wait();
+                showToast('Successfully staked ' + amount + ' RBTC!', 'success');
+                
+                document.getElementById('stakeAmount').value = '';
+                await updateStats();
+            } catch (error) {
+                console.error(error);
+                showToast('Staking failed: ' + error.message, 'error');
+            }
+        }
+
+        // Withdraw function
+        async function withdraw() {
+            if (!signer) {
+                showToast('Please connect your wallet', 'error');
+                return;
+            }
+            
+            const amount = document.getElementById('withdrawAmount').value;
+            if (!amount || amount <= 0) {
+                showToast('Please enter a valid amount', 'error');
+                return;
+            }
+            
+            try {
+                const tx = await contracts.yieldFarm.withdraw(ethers.utils.parseEther(amount));
+                
+                showToast('Withdraw transaction submitted...', 'success');
+                await tx.wait();
+                showToast('Successfully withdrawn ' + amount + ' RBTC!', 'success');
+                
+                document.getElementById('withdrawAmount').value = '';
+                await updateStats();
+            } catch (error) {
+                console.error(error);
+                showToast('Withdrawal failed: ' + error.message, 'error');
+            }
+        }
+
+        // Claim rewards function
+        async function claimRewards() {
+            if (!signer) {
+                showToast('Please connect your wallet', 'error');
+                return;
+            }
+            
+            try {
+                const tx = await contracts.yieldFarm.claimRewards();
+                
+                showToast('Claim transaction submitted...', 'success');
+                await tx.wait();
+                showToast('Successfully claimed RYLD rewards!', 'success');
+                
+                await updateStats();
+            } catch (error) {
+                console.error(error);
+                showToast('Claim failed: ' + error.message, 'error');
+            }
+        }
+
+        // Add liquidity function
+        async function addLiquidity() {
+            if (!signer) {
+                showToast('Please connect your wallet', 'error');
+                return;
+            }
+            
+            const rbtcAmount = document.getElementById('lpRbtcAmount').value;
+            if (!rbtcAmount || rbtcAmount <= 0) {
+                showToast('Please enter a valid amount', 'error');
+                return;
+            }
+            
+            try {
+                // Calculate required RYLD amount based on current pool ratio
+                const reserves = await contracts.liquidityPool.getReserves();
+                const ryldAmount = ethers.utils.parseEther(rbtcAmount).mul(reserves[1]).div(reserves[0]);
+                
+                // Approve RYLD
+                const approveTx = await contracts.ryldToken.approve(
+                    CONTRACTS.liquidityPool,
+                    ryldAmount
+                );
+                await approveTx.wait();
+                
+                // Add liquidity
+                const tx = await contracts.liquidityPool.addLiquidity(ryldAmount, {
+                    value: ethers.utils.parseEther(rbtcAmount)
+                });
+                
+                showToast('Liquidity transaction submitted...', 'success');
+                await tx.wait();
+                showToast('Successfully added liquidity!', 'success');
+                
+                document.getElementById('lpRbtcAmount').value = '';
+            } catch (error) {
+                console.error(error);
+                showToast('Failed to add liquidity: ' + error.message, 'error');
+            }
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            
+            document.getElementById('toastContainer').appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
